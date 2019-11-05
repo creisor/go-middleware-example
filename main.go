@@ -10,16 +10,20 @@ import (
 )
 
 func main() {
+	key := "notahacker"
+
 	router := mux.NewRouter()
-	authRouter := mux.NewRouter().PathPrefix("/authorized").Subrouter().StrictSlash(true)
+	authRoutes := mux.NewRouter()
+
+	common := negroni.Classic()
+
+	router.PathPrefix("/authorized").Handler(common.With(
+		NewVerifyMiddleware(key),
+		&AuthHandler{},
+		negroni.Wrap(authRoutes),
+	))
 
 	router.HandleFunc("/", homeHandler)
-
-	router.PathPrefix("/authorized").Handler(negroni.New(
-		NewVerifyMiddleware("notahacker"),
-		&AuthHandler{},
-		negroni.Wrap(authRouter),
-	))
 
 	n := negroni.Classic()
 	n.UseHandler(router)
