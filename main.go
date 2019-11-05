@@ -19,26 +19,31 @@ func main() {
 
 	router.PathPrefix("/authorized").Handler(common.With(
 		NewVerifyMiddleware(key),
-		&AuthHandler{},
+		NewGenericHandler("You are authorized"),
 		negroni.Wrap(authRoutes),
 	))
 
-	router.HandleFunc("/", homeHandler)
+	// order matters (/authorized must come before /, or / will match the /authorized route)
+	router.PathPrefix("/").Handler(common.With(
+		NewGenericHandler("Hello from home"),
+	))
 
-	n := negroni.Classic()
+	n := negroni.New()
 	n.UseHandler(router)
 
 	http.ListenAndServe(":3000", n)
 }
 
-func homeHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello from home")
+type GenericHandler struct {
+	text string
 }
 
-type AuthHandler struct{}
+func NewGenericHandler(text string) *GenericHandler {
+	return &GenericHandler{text}
+}
 
-func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	fmt.Fprintf(w, "You are authorized")
+func (h *GenericHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	fmt.Fprintf(w, h.text)
 }
 
 type VerifyMiddleware struct {
